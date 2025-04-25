@@ -1,0 +1,7 @@
+mujoco            # (pip wheels include the 2.3 native libs)
+gymnasium[mujoco]
+stable-baselines3
+sb3-contrib
+jax[jaxlib]              # cpu or cuda wheel
+ray[default]
+tensorboard
