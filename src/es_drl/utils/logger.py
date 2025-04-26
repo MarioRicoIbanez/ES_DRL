@@ -5,20 +5,28 @@ class Logger:
     def __init__(self, log_dir: str, filename: str = "progress.csv"):
         os.makedirs(log_dir, exist_ok=True)
         self.filepath = os.path.join(log_dir, filename)
-        self.file = open(self.filepath, "w")
-        self.header_written = False
-        self.keys = []
+
+        # If file exists and is non-empty, open in append and read header
+        if os.path.exists(self.filepath) and os.path.getsize(self.filepath) > 0:
+            self.file = open(self.filepath, "a")
+            with open(self.filepath, "r") as f:
+                header = f.readline().strip().split(",")[1:]
+            self.keys = header
+            self.header_written = True
+        else:
+            # Create fresh file (write mode)
+            self.file = open(self.filepath, "w")
+            self.keys = []
+            self.header_written = False
 
     def log(self, step: int, data: dict):
-        # On first call, write header
+        # First time: write header
         if not self.header_written:
             self.keys = list(data.keys())
-            header = "step," + ",".join(self.keys) + "\n"
-            self.file.write(header)
+            self.file.write("step," + ",".join(self.keys) + "\n")
             self.header_written = True
 
-        # Write a line: step, then each value in data in order of self.keys
+        # Write data line
         values = [str(data[k]) for k in self.keys]
-        line = str(step) + "," + ",".join(values) + "\n"
-        self.file.write(line)
+        self.file.write(f"{step}," + ",".join(values) + "\n")
         self.file.flush()

@@ -26,14 +26,24 @@ class MLP(nn.Module):
 
 class BasicES(EvolutionStrategy):
     def __getstate__(self):
-        # Exclude non-picklable logger (and any other file handles) when pickling
+        """
+        Exclude the logger (and file handles) from the pickled state
+        so that Joblib workers don't try to serialize open files.
+        """
         state = self.__dict__.copy()
+        # Remove the logger and any file handle
         state.pop('logger', None)
         return state
 
     def __setstate__(self, state):
-        # Restore state and recreate logger in subprocess
+        """
+        After unpickling in a worker process, restore attributes and
+        recreate the logger so calls to self.logger.log(...) still work
+        in the main process (but worker won't use it).
+        """
         self.__dict__.update(state)
+        from src.es_drl.utils.logger import Logger
+        # Recreate logger pointing to the same log_dir
         self.logger = Logger(self.log_dir)
 
     def __init__(self, common_cfg, es_cfg):
