@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+
+import os
+# Force MuJoCo to use EGL offscreen rendering (no GLX/GLFW)
+os.environ["MUJOCO_GL"]           = "egl"
+os.environ["PYOPENGL_PLATFORM"]   = "egl"
+
 import sys
 import yaml
 

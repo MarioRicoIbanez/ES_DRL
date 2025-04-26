@@ -69,8 +69,15 @@ class BasicES(EvolutionStrategy):
         self.lr              = es_cfg["learning_rate"]
         self.num_generations = es_cfg["num_generations"]
 
-        # Setup logger
+        # Setup logger and video recording
         self.logger = Logger(self.log_dir)
+        self.video_folder = common_cfg["video"]["folder_es"]
+        self.video_freq   = common_cfg["video"]["freq_es"]
+        self.video_length = common_cfg["video"]["length"]
+        os.makedirs(self.video_folder, exist_ok=True)
+
+        # Verbose flag
+        self.verbose = es_cfg.get("verbose", False)
 
         # Seeding
         np.random.seed(self.seed)
@@ -117,7 +124,9 @@ class BasicES(EvolutionStrategy):
 
         for gen in range(self.num_generations):
 
-            # print(f"---Running GENERATION {gen}---")
+            if self.verbose:
+                print(f"[ES] GENERATION {gen} START", flush=True)
+
             init_time = time.time()
 
             time1 = time.time()
@@ -134,7 +143,8 @@ class BasicES(EvolutionStrategy):
             rewards = np.array(rewards)
             # Ensure rewards are float32 to match model dtype
             rewards = rewards.astype(np.float32)
-            # print(f"TIME EVALUATING FOR THIS GEN: {round((time.time() - time1), 4)}")
+            if self.verbose:
+                print(f"[ES] TIME EVALUATING FOR THIS GEN: {round((time.time() - time1), 4)}", flush=True)
 
             # Select elite perturbations
             elite_idx     = np.argsort(rewards)[-num_elite:]
@@ -147,7 +157,49 @@ class BasicES(EvolutionStrategy):
             # Log progress
             mean_elite = float(torch.mean(elite_rewards))
             self.logger.log(gen, {"reward_mean_elite": mean_elite})
-            # print(f"TIME: {round((time.time() - init_time), 4)}")
+            if self.verbose:
+                print(f"[ES] MEAN ELITE = {mean_elite:.3f}", flush=True)
+
+
+            # Video recording every `video_freq` generations
+            if hasattr(self, "video_freq") and (gen % self.video_freq == 0):
+                # print(f"[ES] Recording video at generation {gen}")
+                # Create a fresh env wrapped with VecVideoRecorder
+                from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
+                from stable_baselines3.common.monitor import Monitor
+
+                # Set up single-env for video
+                record_env = DummyVecEnv([
+                    lambda: Monitor(
+                        gym.make(self.env_id, render_mode="rgb_array"),
+                        filename=None
+                    )
+                ])
+                record_env = VecVideoRecorder(
+                    record_env,
+                    video_folder=self.video_folder,
+                    record_video_trigger=lambda x: x == 0,
+                    video_length=self.video_length,
+                    name_prefix=f"basic_es-gen{gen}"
+                )
+
+                # Rollout with current mu deterministically
+                obs = record_env.reset() 
+                for _ in range(self.video_length):
+                    # compute action from mu
+                    # get obs as numpy, convert to tensor
+                    obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
+                    raw = self.policy(obs_tensor).cpu().detach().numpy()
+                    action = np.tanh(raw) * self.action_high
+                    obs, _, dones, _ = record_env.step(action)
+                    if dones[0]:
+                        break
+                record_env.close()
+                # print(f"[ES] Video saved for generation {gen}")
+
+            if self.verbose:
+                print(f"[ES] TOTAL ITER TIME: {round((time.time() - init_time), 4)}")
+                print()
 
         # Save final policy
         self._set_param_vector(mu.cpu().numpy())

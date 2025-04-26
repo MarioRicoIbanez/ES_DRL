@@ -11,6 +11,6 @@ total_timesteps_td3: 1000000
 video:
   folder_es:    "videos/es"
   folder_td3:   "videos/td3"
-  freq_es:      100000
+  freq_es:      100
   freq_td3:     100000
   length:       1000
