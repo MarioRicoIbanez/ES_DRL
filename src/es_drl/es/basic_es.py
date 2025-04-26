@@ -4,6 +4,8 @@ import gymnasium as gym
 import numpy as np
 import torch
 from torch import nn
+from joblib import Parallel, delayed
+
 from src.es_drl.es.base import EvolutionStrategy
 from src.es_drl.utils.logger import Logger
 
@@ -23,10 +25,24 @@ class MLP(nn.Module):
         return self.net(x)
 
 class BasicES(EvolutionStrategy):
+    def __getstate__(self):
+        # Exclude non-picklable logger (and any other file handles) when pickling
+        state = self.__dict__.copy()
+        state.pop('logger', None)
+        return state
+
+    def __setstate__(self, state):
+        # Restore state and recreate logger in subprocess
+        self.__dict__.update(state)
+        self.logger = Logger(self.log_dir)
+
     def __init__(self, common_cfg, es_cfg):
         super().__init__(common_cfg, es_cfg)
 
-        # Build policy network
+        # Device setup
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        # Build policy network and move to device
         env = gym.make(self.env_id)
         self.action_high = env.action_space.high
         obs_dim    = env.observation_space.shape[0]
@@ -34,7 +50,7 @@ class BasicES(EvolutionStrategy):
         env.close()
 
         self.hidden_sizes   = es_cfg.get("hidden_sizes", [400, 300])
-        self.policy         = MLP(obs_dim, action_dim, self.hidden_sizes)
+        self.policy         = MLP(obs_dim, action_dim, self.hidden_sizes).to(self.device)
 
         # ES hyperparameters
         self.sigma           = es_cfg["sigma"]
@@ -49,26 +65,32 @@ class BasicES(EvolutionStrategy):
         # Seeding
         np.random.seed(self.seed)
         torch.manual_seed(self.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(self.seed)
 
     def _get_param_vector(self):
         return torch.nn.utils.parameters_to_vector(
             self.policy.parameters()
-        ).detach().numpy()
+        ).detach().cpu().numpy()
 
     def _set_param_vector(self, vec: np.ndarray):
-        tensor = torch.tensor(vec, dtype=torch.float32)
+        tensor = torch.tensor(vec, dtype=torch.float32, device=self.device)
         torch.nn.utils.vector_to_parameters(tensor, self.policy.parameters())
 
     def _evaluate_candidate(self, params: np.ndarray) -> float:
+        # Ensure policy on correct device
+        self.policy.to(self.device)
+        # Load candidate parameters
         self._set_param_vector(params)
         env = gym.make(self.env_id)
         obs, _ = env.reset(seed=self.seed)
         done = False
         total_reward = 0.0
         while not done:
+            obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
             with torch.no_grad():
-                raw = self.policy(torch.tensor(obs, dtype=torch.float32)).numpy()
-                action = np.tanh(raw) * self.action_high
+                raw = self.policy(obs_tensor)
+                action = torch.tanh(raw).cpu().numpy() * self.action_high
             obs, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             total_reward += reward
@@ -76,33 +98,49 @@ class BasicES(EvolutionStrategy):
         return total_reward
 
     def run(self) -> str:
-        # Initialize mean parameter vector μ
-        mu = self._get_param_vector()
-        param_dim = mu.shape[0]
+        # Initialize mean parameter vector μ on device
+        mu = torch.from_numpy(self._get_param_vector()).to(self.device)
+        param_dim = mu.numel()
         num_elite = max(1, int(self.elite_frac * self.population_size))
+        
+        import time
 
         for gen in range(self.num_generations):
-            # Sample noise and evaluate
-            noise = np.random.randn(self.population_size, param_dim)
-            rewards = np.zeros(self.population_size)
-            for i in range(self.population_size):
-                candidate = mu + self.sigma * noise[i]
-                rewards[i] = self._evaluate_candidate(candidate)
+
+            print(f"---Running GENERATION {gen}---")
+            init_time = time.time()
+
+            time1 = time.time()
+            # Sample noise on device
+            noise = torch.randn(self.population_size, param_dim, device=self.device)
+            # Create candidate vectors on host for evaluation
+
+            # Parallel evaluation (subprocess recreates logger)
+            candidates = (mu.unsqueeze(0) + self.sigma * noise).cpu().numpy()
+            rewards = Parallel(n_jobs=-1)(
+                delayed(self._evaluate_candidate)(cand) for cand in candidates
+            )
+
+            rewards = np.array(rewards)
+            # Ensure rewards are float32 to match model dtype
+            rewards = rewards.astype(np.float32)
+            print(f"TIME EVALUATING FOR THIS GEN: {round((time.time() - time1), 4)}")
 
             # Select elite perturbations
-            elite_idx   = np.argsort(rewards)[-num_elite:]
-            elite_noise = noise[elite_idx]
-            elite_rewards = rewards[elite_idx]
+            elite_idx     = np.argsort(rewards)[-num_elite:]
+            elite_noise   = noise[elite_idx]         # tensor on device
+            elite_rewards = torch.from_numpy(rewards[elite_idx]).to(self.device)
 
             # Update μ via weighted average of elite
-            mu += (self.lr / (num_elite * self.sigma)) * (elite_noise.T @ elite_rewards)
+            mu = mu + (self.lr / (num_elite * self.sigma)) * (elite_noise.t() @ elite_rewards)
 
             # Log progress
-            mean_elite = float(np.mean(elite_rewards))
+            mean_elite = float(torch.mean(elite_rewards))
             self.logger.log(gen, {"reward_mean_elite": mean_elite})
+            print(f"TIME: {round((time.time() - init_time), 4)}")
 
         # Save final policy
-        self._set_param_vector(mu)
+        self._set_param_vector(mu.cpu().numpy())
         ckpt_path = os.path.join(self.model_dir, f"{self.es_name}_seed{self.seed}.pt")
         torch.save(self.policy.state_dict(), ckpt_path)
         return ckpt_path
