@@ -1,7 +1,10 @@
-**/videos_step/**
+**/videos/**
 # model checkpoints
 models/
 # logs
 logs/
 # TensorBoard folders
 **/runs/
+
+# pycache
+*.pyc
