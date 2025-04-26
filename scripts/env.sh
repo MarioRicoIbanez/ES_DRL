@@ -22,3 +22,6 @@ export PYOPENGL_PLATFORM=egl
 
 # Make sure conda libraries (Mesa EGL/GL) are in the loading PATH:
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
+
+# [E] Install all Python dependencies from requirements.txt
+pip install -r ../requirements.txt
