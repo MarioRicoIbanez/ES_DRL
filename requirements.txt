@@ -8,3 +8,5 @@ tensorboard
 torch
 PyYAML
 moviepy
+imageio
+joblib

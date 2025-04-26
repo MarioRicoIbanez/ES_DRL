@@ -107,7 +107,7 @@ class BasicES(EvolutionStrategy):
 
         for gen in range(self.num_generations):
 
-            print(f"---Running GENERATION {gen}---")
+            # print(f"---Running GENERATION {gen}---")
             init_time = time.time()
 
             time1 = time.time()
@@ -124,7 +124,7 @@ class BasicES(EvolutionStrategy):
             rewards = np.array(rewards)
             # Ensure rewards are float32 to match model dtype
             rewards = rewards.astype(np.float32)
-            print(f"TIME EVALUATING FOR THIS GEN: {round((time.time() - time1), 4)}")
+            # print(f"TIME EVALUATING FOR THIS GEN: {round((time.time() - time1), 4)}")
 
             # Select elite perturbations
             elite_idx     = np.argsort(rewards)[-num_elite:]
@@ -137,7 +137,7 @@ class BasicES(EvolutionStrategy):
             # Log progress
             mean_elite = float(torch.mean(elite_rewards))
             self.logger.log(gen, {"reward_mean_elite": mean_elite})
-            print(f"TIME: {round((time.time() - init_time), 4)}")
+            # print(f"TIME: {round((time.time() - init_time), 4)}")
 
         # Save final policy
         self._set_param_vector(mu.cpu().numpy())
