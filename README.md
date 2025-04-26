@@ -10,9 +10,9 @@ These candidates are evaluated in the environment (e.g., MuJoCo simulators), and
 
 Mathematically, each offspring is sampled as:
 
-\[
+$$
 \theta_i = \mu^{(t)} + \sigma^{(t)} \varepsilon_i, \quad \varepsilon_i \sim \mathcal{N}(0, I)
-\]
+$$
 
 After evaluation, μ is updated to either the best offspring (plus optionally the parent) or to the mean of the best candidates.  
 This simple ES variant is lightweight, requires no gradient computations, and is effective for optimizing small policy networks in continuous environments.
