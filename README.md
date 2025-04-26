@@ -37,6 +37,12 @@ If everything is correct, you can run the code as follows:
 ./scripts/run_es.sh configs/common.yaml configs/es/basic_es.yaml
 ```
 
+- **Run TD3 naive:**
+
+```bash
+./scripts/run_finetune.sh   configs/common.yaml   configs/td3/td3_finetune.yaml   --no-pretrained
+```
+
 - **Run TD3 based on Basic ES weights:**
 
 ```bash

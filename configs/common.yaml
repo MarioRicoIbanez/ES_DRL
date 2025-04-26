@@ -6,7 +6,7 @@ num_envs: 16
 total_timesteps_es: 1000
 
 # TD3 fine-tuning settings
-total_timesteps_td3: 100000
+total_timesteps_td3: 1000000
 
 video:
   folder_es:    "videos/es"
