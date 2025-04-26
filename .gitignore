@@ -1,1 +1,7 @@
-**/videos_step/** 
+**/videos_step/**
+# model checkpoints
+models/
+# logs
+logs/
+# TensorBoard folders
+**/runs/
