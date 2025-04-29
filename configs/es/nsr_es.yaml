@@ -1,0 +1,9 @@
+es_name: "nsr_es"
+sigma: 0.01
+population_size: 8
+elite_frac: 0.5
+learning_rate: 0.02
+num_generations: 10000
+num_neighbors: 10
+hidden_sizes: [500]
+verbose: false   
