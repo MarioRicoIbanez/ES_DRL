@@ -128,19 +128,21 @@ class NSRES(EvolutionStrategy):
             with torch.no_grad():
                 raw = self.policy(obs_tensor)
                 action = torch.tanh(raw).cpu().numpy() * self.action_high
-            obs, reward, terminated, truncated, _ = env.step(action)
+            obs, reward, terminated, truncated, info = env.step(action)
+            x_pos = info["x_position"]
+            y_pos = info["y_position"]
             total_reward += reward
             done = terminated or truncated
         env.close()
-        return obs, total_reward
+        return x_pos, y_pos, total_reward
 
     def _compute_novelty_scores(self, candidates):
         output = (Parallel(n_jobs=-1)(
             delayed(self._compute_final_position)(cand) for cand in candidates
         ))
 
-        final_positions = np.array([tuple[0] for tuple in output])
-        rewards = np.array([tuple[1] for tuple in output])
+        final_positions = np.array([tuple[0: 2] for tuple in output])
+        rewards = np.array([tuple[2] for tuple in output])
 
         # print(final_positions.shape, rewards.shape)
 
