@@ -56,6 +56,7 @@ def forward_from_vector(param_vectors: torch.Tensor, obs: torch.Tensor):
 # 2) vmapped version: returns [P, action_dim]
 batched_policy = vmap(forward_from_vector, in_dims=(0, 0))
 
+@torch.no_grad()  
 def evaluate_candidate(candidates) -> float:
     print("EVALUATE CANDIDATE")
     obs, _ = envs.reset()
@@ -64,7 +65,12 @@ def evaluate_candidate(candidates) -> float:
     
     while not done.all():
         obs_tensor = torch.tensor(obs, dtype=torch.float32, device=device)                    
-        actions = batched_policy(candidates, obs_tensor).cpu().numpy() * action_high 
+        actions = (
+            batched_policy(candidates, obs_tensor)
+            .detach()                     
+            .cpu()
+            .numpy()
+        ) * action_high
       
         obs, rewards, term, trunc, _ = envs.step(actions)
         still_running = ~done
@@ -80,9 +86,9 @@ sigma = 0.01
 learning_rate = 0.02
 envs = gym.make_vec("Pendulum-v1", num_envs=num_envs, vectorization_mode="sync")
 obs, _ = envs.reset()
-param_vectors = param_vector.unsqueeze(0).repeat(num_envs, 1)
+param_vectors = param_vector.unsqueeze(0).repeat(num_envs, 1).to(device)  # ← GPU
 param_dim = param_vector.numel()
-num_elite = int(num_envs * 0.2)
+num_elite = int(num_envs * 0.05)
 
 # 4) one-shot batched rollout step
 for gen in range(10000):
