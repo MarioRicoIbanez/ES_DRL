@@ -1,1 +1,12 @@
-**/videos_step/** 
+**/videos/**
+# model checkpoints
+models/
+# logs
+logs/
+# TensorBoard folders
+**/runs/
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class

@@ -5,3 +5,8 @@ sb3-contrib
 jax[jaxlib]              # cpu or cuda wheel
 ray[default]
 tensorboard
+torch
+PyYAML
+moviepy
+imageio
+joblib
