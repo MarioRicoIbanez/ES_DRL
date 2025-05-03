@@ -11,6 +11,7 @@ import yaml
 from src.es_drl.es.basic_es import BasicES
 from src.es_drl.es.ns_es import NSES
 from src.es_drl.es.nsr_es import NSRES
+from src.es_drl.es.tr_es import TrustRegionES
 
 def load_yaml(path):
     with open(path) as f:
@@ -26,6 +27,8 @@ if __name__ == "__main__":
 
     if es_cfg["es_name"] == "basic_es":
         es = BasicES(common_cfg, es_cfg)
+    elif es_cfg["es_name"] == "tr_es":
+        es = TrustRegionES(common_cfg, es_cfg)
     elif es_cfg["es_name"] == "ns_es":
         es = NSES(common_cfg, es_cfg)
     elif es_cfg["es_name"] == "nsr_es":
