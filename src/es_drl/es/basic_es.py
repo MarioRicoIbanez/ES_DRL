@@ -44,6 +44,9 @@ class BasicES(EvolutionStrategy):
         self.num_timesteps = es_cfg["num_timesteps"]
         self.episode_length = es_cfg.get("episode_length", 1000)
 
+        # Network parameters
+        self.hidden_sizes = es_cfg.get("hidden_sizes", [32, 32])
+
         # Setup logger and video recording
         self.logger = Logger(self.log_dir)
         self.video_folder = common_cfg["video"]["folder_es"]
@@ -130,6 +133,7 @@ class BasicES(EvolutionStrategy):
             center_fitness=True,
             deterministic_eval=False,
             progress_fn=progress,
+            hidden_layer_sizes=tuple(self.hidden_sizes),
         )
 
         print(f"time to jit: {times[1] - times[0]}")

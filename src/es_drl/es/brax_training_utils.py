@@ -100,6 +100,7 @@ def train(
     randomization_fn: Optional[
         Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
+    hidden_layer_sizes: Tuple[int, ...] = (64,) * 2,
 ):
     """ES training (from https://arxiv.org/pdf/1703.03864.pdf)."""
     num_envs = population_size * 2  # noise + anti noise
@@ -161,7 +162,7 @@ def train(
     es_network = network_factory(
         observation_size=obs_size,
         action_size=env.action_size,
-        hidden_layer_sizes=(64,) * 2,
+        hidden_layer_sizes=hidden_layer_sizes,
         preprocess_observations_fn=normalize_fn,
     )
     make_policy = es_networks.make_inference_fn(es_network)
