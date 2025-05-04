@@ -36,7 +36,6 @@ import flax
 import jax
 import jax.numpy as jnp
 import optax
-from IPython.display import HTML, clear_output
 
 Metrics = types.Metrics
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
