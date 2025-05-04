@@ -1,73 +1,47 @@
-# src/es_drl/es/basic_es.py
-import os
-import gymnasium as gym
-import numpy as np
-import torch
-from torch import nn
-from joblib import Parallel, delayed
+# Copyright 2024 The Brax Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+"""Evolution strategy training.
+
+See: https://arxiv.org/pdf/1703.03864.pdf
+"""
+
+from datetime import datetime
+import os
+
+import matplotlib.pyplot as plt
+import jax
+import imageio
+from brax import envs
+from brax.io import model, image
+
+from src.es_drl.es import brax_training_utils
 from src.es_drl.es.base import EvolutionStrategy
 from src.es_drl.utils.logger import Logger
 
-class MLP(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_sizes):
-        super().__init__()
-        layers = []
-        in_dim = obs_dim
-        for h in hidden_sizes:
-            layers.append(nn.Linear(in_dim, h))
-            layers.append(nn.ReLU())
-            in_dim = h
-        layers.append(nn.Linear(in_dim, action_dim))
-        self.net = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.net(x)
-
 class BasicES(EvolutionStrategy):
-    def __getstate__(self):
-        """
-        Exclude the logger (and file handles) from the pickled state
-        so that Joblib workers don't try to serialize open files.
-        """
-        state = self.__dict__.copy()
-        # Remove the logger and any file handle
-        state.pop('logger', None)
-        return state
-
-    def __setstate__(self, state):
-        """
-        After unpickling in a worker process, restore attributes and
-        recreate the logger so calls to self.logger.log(...) still work
-        in the main process (but worker won't use it).
-        """
-        self.__dict__.update(state)
-        from src.es_drl.utils.logger import Logger
-        # Recreate logger pointing to the same log_dir
-        self.logger = Logger(self.log_dir)
-
     def __init__(self, common_cfg, es_cfg):
         super().__init__(common_cfg, es_cfg)
 
-        # Device setup
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        # Build policy network and move to device
-        env = gym.make(self.env_id)
-        self.action_high = env.action_space.high
-        obs_dim    = env.observation_space.shape[0]
-        action_dim = env.action_space.shape[0]
-        env.close()
-
         self.hidden_sizes   = es_cfg.get("hidden_sizes", [400, 300])
-        self.policy         = MLP(obs_dim, action_dim, self.hidden_sizes).to(self.device)
 
         # ES hyperparameters
         self.sigma           = es_cfg["sigma"]
         self.population_size = es_cfg["population_size"]
-        self.elite_frac      = es_cfg.get("elite_frac", 0.5)
         self.lr              = es_cfg["learning_rate"]
-        self.num_generations = es_cfg["num_generations"]
+        self.num_timesteps   = es_cfg["num_timesteps"]
+        self.episode_length  = es_cfg.get("episode_length", 1000)
 
         # Setup logger and video recording
         self.logger = Logger(self.log_dir)
@@ -75,134 +49,78 @@ class BasicES(EvolutionStrategy):
         self.video_freq   = common_cfg["video"]["freq_es"]
         self.video_length = common_cfg["video"]["length"]
         os.makedirs(self.video_folder, exist_ok=True)
+        
+        self.results_dir = f'{common_cfg["results"]["folder_es"]}/{self.env_id}'
+        os.makedirs(self.results_dir, exist_ok=True)
 
         # Verbose flag
         self.verbose = es_cfg.get("verbose", False)
 
-        # Seeding
-        np.random.seed(self.seed)
-        torch.manual_seed(self.seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(self.seed)
+    def _save_video(self):
+        # create an env with auto-reset
+        env = envs.create(env_name=self.env_id)
 
-    def _get_param_vector(self):
-        return torch.nn.utils.parameters_to_vector(
-            self.policy.parameters()
-        ).detach().cpu().numpy()
+        jit_env_reset = jax.jit(env.reset)
+        jit_env_step = jax.jit(env.step)
+        jit_inference_fn = jax.jit(self.inference_fn)
 
-    def _set_param_vector(self, vec: np.ndarray):
-        tensor = torch.tensor(vec, dtype=torch.float32, device=self.device)
-        torch.nn.utils.vector_to_parameters(tensor, self.policy.parameters())
+        rollout = []
+        rng = jax.random.PRNGKey(seed=1)
+        state = jit_env_reset(rng=rng)
+        for _ in range(self.episode_length):
+            rollout.append(state.pipeline_state)
+            act_rng, rng = jax.random.split(rng)
+            act, _ = jit_inference_fn(state.obs, act_rng)
+            state = jit_env_step(state, act)
 
-    def _evaluate_candidate(self, params: np.ndarray) -> float:
-        # Ensure policy on correct device
-        self.policy.to(self.device)
-        # Load candidate parameters
-        self._set_param_vector(params)
-        env = gym.make(self.env_id)
-        obs, _ = env.reset(seed=self.seed)
-        done = False
-        total_reward = 0.0
-        while not done:
-            obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
-            with torch.no_grad():
-                raw = self.policy(obs_tensor)
-                action = torch.tanh(raw).cpu().numpy() * self.action_high
-            obs, reward, terminated, truncated, _ = env.step(action)
-            done = terminated or truncated
-            total_reward += reward
-        env.close()
-        return total_reward
+        frames = image.render_array(env.sys, jax.device_get(rollout), height=480, width=640)
+        fps = int(1.0 / env.dt)
+        with imageio.get_writer(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4", fps=fps) as w:
+            for frame in frames:
+                w.append_data(frame)
 
     def run(self) -> str:
-        # Initialize mean parameter vector μ on device
-        mu = torch.from_numpy(self._get_param_vector()).to(self.device)
-        param_dim = mu.numel()
-        num_elite = max(1, int(self.elite_frac * self.population_size))
-        
-        import time
+        xdata, ydata = [], []
+        times = [datetime.now()]
 
-        for gen in range(self.num_generations):
+        def progress(num_steps, metrics):
+            times.append(datetime.now())
+            xdata.append(num_steps)
+            ydata.append(metrics['eval/episode_reward'])
+            plt.xlim([0, self.num_timesteps])
+            plt.ylim([min_y, max_y])
+            plt.xlabel('# environment steps')
+            plt.ylabel('reward per episode')
+            plt.plot(xdata, ydata)
+            print(f"Reward: {metrics['eval/episode_reward']}")
+            plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")
 
-            if self.verbose:
-                print(f"[ES] GENERATION {gen} START", flush=True)
+        max_y = {'ant': 8000, 'halfcheetah': 8000, 'hopper': 2500, 'humanoid': 13000, 'humanoidstandup': 75_000, 'reacher': 5, 'walker2d': 5000, 'pusher': 0}[self.env_id]
+        min_y = {'reacher': -100, 'pusher': -150}.get(self.env_id, 0)
 
-            init_time = time.time()
+        make_inference_fn, self.params, _ = brax_training_utils.train(
+            environment=envs.get_environment(self.env_id),
+            wrap_env=True,
+            num_timesteps=self.num_timesteps,
+            episode_length=self.episode_length,
+            action_repeat=1,
+            l2coeff=0,
+            population_size=self.population_size,
+            learning_rate=self.lr,
+            fitness_shaping=brax_training_utils.FitnessShaping.WIERSTRA,
+            num_eval_envs=128,
+            perturbation_std=self.sigma,
+            seed=self.seed,
+            normalize_observations=True,
+            num_evals=20,
+            center_fitness=True,
+            deterministic_eval=False,
+            progress_fn=progress,
+        )
 
-            time1 = time.time()
-            # Sample noise on device
-            noise = torch.randn(self.population_size, param_dim, device=self.device)
-            # Create candidate vectors on host for evaluation
+        print(f'time to jit: {times[1] - times[0]}')
+        print(f'time to train: {times[-1] - times[1]}')
+        self.inference_fn = make_inference_fn(self.params)
 
-            # Parallel evaluation (subprocess recreates logger)
-            candidates = (mu.unsqueeze(0) + self.sigma * noise).cpu().numpy()
-            rewards = Parallel(n_jobs=-1)(
-                delayed(self._evaluate_candidate)(cand) for cand in candidates
-            )
-
-            rewards = np.array(rewards)
-            # Ensure rewards are float32 to match model dtype
-            rewards = rewards.astype(np.float32)
-            if self.verbose:
-                print(f"[ES] TIME EVALUATING FOR THIS GEN: {round((time.time() - time1), 4)}", flush=True)
-
-            # Select elite perturbations
-            elite_idx     = np.argsort(rewards)[-num_elite:]
-            elite_noise   = noise[elite_idx]         # tensor on device
-            elite_rewards = torch.from_numpy(rewards[elite_idx]).to(self.device)
-
-            # Update μ via weighted average of elite
-            mu = mu + (self.lr / (num_elite * self.sigma)) * (elite_noise.t() @ elite_rewards)
-
-            # Log progress
-            mean_elite = float(torch.mean(elite_rewards))
-            # self.logger.log(gen, {"reward_mean_elite": mean_elite})
-            if self.verbose:
-                print(f"[ES] MEAN ELITE = {mean_elite:.3f}", flush=True)
-
-
-            # Video recording every `video_freq` generations
-            if hasattr(self, "video_freq") and (gen % self.video_freq == 0):
-                # print(f"[ES] Recording video at generation {gen}")
-                # Create a fresh env wrapped with VecVideoRecorder
-                from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
-                from stable_baselines3.common.monitor import Monitor
-
-                # Set up single-env for video
-                record_env = DummyVecEnv([
-                    lambda: Monitor(
-                        gym.make(self.env_id, render_mode="rgb_array"),
-                        filename=None
-                    )
-                ])
-                record_env = VecVideoRecorder(
-                    record_env,
-                    video_folder=self.video_folder,
-                    record_video_trigger=lambda x: x == 0,
-                    video_length=self.video_length,
-                    name_prefix=f"basic_es-gen{gen}"
-                )
-
-                # Rollout with current mu deterministically
-                obs = record_env.reset() 
-                for _ in range(self.video_length):
-                    # compute action from mu
-                    # get obs as numpy, convert to tensor
-                    obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device)
-                    raw = self.policy(obs_tensor).cpu().detach().numpy()
-                    action = np.tanh(raw) * self.action_high
-                    obs, _, dones, _ = record_env.step(action)
-                    if dones[0]:
-                        break
-                record_env.close()
-                # print(f"[ES] Video saved for generation {gen}")
-
-            if self.verbose:
-                print(f"[ES] TOTAL ITER TIME: {round((time.time() - init_time), 4)}")
-                print()
-
-        # Save final policy
-        self._set_param_vector(mu.cpu().numpy())
-        ckpt_path = os.path.join(self.model_dir, f"{self.es_name}_seed{self.seed}.pt")
-        torch.save(self.policy.state_dict(), ckpt_path)
-        return ckpt_path
+        model.save_params(os.path.join(self.model_dir, f"{self.env_id}/{self.es_name}_seed{self.seed}.pt"), self.params)
+        self._save_video()
