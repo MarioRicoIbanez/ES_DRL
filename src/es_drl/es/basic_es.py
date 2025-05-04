@@ -20,6 +20,7 @@ See: https://arxiv.org/pdf/1703.03864.pdf
 from datetime import datetime
 import os
 
+import wandb
 import matplotlib.pyplot as plt
 import jax
 import imageio
@@ -85,6 +86,27 @@ class BasicES(EvolutionStrategy):
                 w.append_data(frame)
 
     def run(self) -> str:
+
+        # Start a new wandb run to track this script.
+        run = wandb.init(
+            # Set the wandb entity where your project will be logged (generally your team name).
+            entity="ES_DRL",
+            # Set the wandb project where this run will be logged.
+            project="ES_DRL Experiments",
+            # Track hyperparameters and run metadata.
+            config={
+                "strategy":        "es",
+                "seed":            self.seed,
+                "environment":     self.env_id,
+                "hidden_sizes":    self.hidden_sizes,
+                "sigma":           self.sigma,
+                "population_size": self.population_size,
+                "lr":              self.learning_rate,
+                "num_timesteps":   self.num_timesteps,
+                "episode_length":  self.episode_length,
+            },
+        )
+
         xdata, ydata = [], []
         times = [datetime.now()]
 
@@ -98,6 +120,7 @@ class BasicES(EvolutionStrategy):
             plt.ylabel("reward per episode")
             plt.plot(xdata, ydata)
             print(f"Reward: {metrics['eval/episode_reward']}")
+            run.log({"Reward": metrics["eval/episode_reward"], "Step Time": times[-1] - times[-2]})
             plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")
 
         max_y = {
@@ -132,8 +155,10 @@ class BasicES(EvolutionStrategy):
             progress_fn=progress,
         )
 
-        print(f"time to jit: {times[1] - times[0]}")
-        print(f"time to train: {times[-1] - times[1]}")
+        print(f'time to jit: {times[1] - times[0]}')
+        print(f'time to train: {times[-1] - times[1]}')
+        run.log({"JIT-Time": times[1] - times[0], "Training Time": times[-1] - times[1]})
+
         self.inference_fn = make_inference_fn(self.params)
 
         model.save_params(
@@ -143,3 +168,4 @@ class BasicES(EvolutionStrategy):
             self.params,
         )
         self._save_video()
+        run.finish()
