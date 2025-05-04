@@ -93,7 +93,7 @@ class BasicES(EvolutionStrategy):
             plt.ylabel('reward per episode')
             plt.plot(xdata, ydata)
             print(f"Reward: {metrics['eval/episode_reward']}")
-            plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}_{num_steps}.png")
+            plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")
 
         max_y = {'ant': 8000, 'halfcheetah': 8000, 'hopper': 2500, 'humanoid': 13000, 'humanoidstandup': 75_000, 'reacher': 5, 'walker2d': 5000, 'pusher': 0}[self.env_id]
         min_y = {'reacher': -100, 'pusher': -150}.get(self.env_id, 0)
