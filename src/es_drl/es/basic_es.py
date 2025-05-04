@@ -85,9 +85,15 @@ class BasicES(EvolutionStrategy):
             for frame in frames:
                 w.append_data(frame)
 
-        wandb.log({
-            "rollout_video": wandb.Video(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4", fps=30, format="mp4")
-        })
+        wandb.log(
+            {
+                "rollout_video": wandb.Video(
+                    f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4",
+                    fps=30,
+                    format="mp4",
+                )
+            }
+        )
 
     def run(self) -> str:
 
@@ -99,15 +105,15 @@ class BasicES(EvolutionStrategy):
             project="ES_DRL Experiments",
             # Track hyperparameters and run metadata.
             config={
-                "strategy":        "es",
-                "seed":            self.seed,
-                "environment":     self.env_id,
-                "hidden_sizes":    self.hidden_sizes,
-                "sigma":           self.sigma,
+                "strategy": "es",
+                "seed": self.seed,
+                "environment": self.env_id,
+                "hidden_sizes": self.hidden_sizes,
+                "sigma": self.sigma,
                 "population_size": self.population_size,
-                "lr":              self.lr,
-                "num_timesteps":   self.num_timesteps,
-                "episode_length":  self.episode_length,
+                "lr": self.lr,
+                "num_timesteps": self.num_timesteps,
+                "episode_length": self.episode_length,
             },
         )
 
@@ -133,7 +139,12 @@ class BasicES(EvolutionStrategy):
             plt.ylabel("reward per episode")
             plt.plot(xdata, ydata)
             print(f"Reward: {metrics['eval/episode_reward']}")
-            run.log({"Reward": metrics["eval/episode_reward"], "Step Time": (times[-1] - times[-2]).seconds})
+            run.log(
+                {
+                    "Reward": metrics["eval/episode_reward"],
+                    "Step Time": (times[-1] - times[-2]).seconds,
+                }
+            )
             plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")
 
         max_y = {
@@ -168,20 +179,36 @@ class BasicES(EvolutionStrategy):
             progress_fn=progress,
         )
 
-        print(f'time to jit: {(times[1] - times[0]).seconds}')
-        print(f'time to train: {(times[-1] - times[1]).seconds}')
-        run.log({"JIT-Time": (times[1] - times[0]).seconds, "Training Time": (times[-1] - times[1]).seconds})
-        wandb.log({"training_rewards": wandb.Image(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")})
+        print(f"time to jit: {(times[1] - times[0]).seconds}")
+        print(f"time to train: {(times[-1] - times[1]).seconds}")
+        run.log(
+            {
+                "JIT-Time": (times[1] - times[0]).seconds,
+                "Training Time": (times[-1] - times[1]).seconds,
+            }
+        )
+        wandb.log(
+            {
+                "training_rewards": wandb.Image(
+                    f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png"
+                )
+            }
+        )
 
         self.inference_fn = make_inference_fn(self.params)
 
-        model.save_params(os.path.join(self.model_dir, f"{self.es_name}_seed{self.seed}.pt"), self.params)
+        model.save_params(
+            os.path.join(self.model_dir, f"{self.es_name}_seed{self.seed}.pt"),
+            self.params,
+        )
         artifact = wandb.Artifact(
             name="model_params",
             type="model",
             description="Final Brax policy parameters",
         )
-        artifact.add_file(os.path.join(self.model_dir, f"{self.es_name}_seed{self.seed}.pt"),)
+        artifact.add_file(
+            os.path.join(self.model_dir, f"{self.es_name}_seed{self.seed}.pt"),
+        )
         wandb.log_artifact(artifact)
 
         self._save_video()

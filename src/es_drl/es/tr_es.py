@@ -38,9 +38,7 @@ class TrustRegionES(BasicES):
 
             # KL-based ratio proxy
             ratio = torch.exp(
-                -0.5
-                * torch.sum((new_vec - old_params.detach()) ** 2)
-                / (self.sigma**2)
+                -0.5 * torch.sum((new_vec - old_params.detach()) ** 2) / (self.sigma**2)
             )
             clipped = torch.clamp(ratio, 1 - self.clip_ratio, 1 + self.clip_ratio)
             loss = -torch.min(ratio * rewards[i], clipped * rewards[i])
