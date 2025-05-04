@@ -1,4 +1,4 @@
-env_id: "walker2d"
+env_id: "hopper"
 seed: 42
 num_envs: 16
 
