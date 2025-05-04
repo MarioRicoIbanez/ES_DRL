@@ -80,7 +80,7 @@ class BasicES(EvolutionStrategy):
         )
         fps = int(1.0 / env.dt)
         with imageio.get_writer(
-            f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4", fps=fps
+            f"{self.results_dir}/{self.es_name}_seed{self.seed}.mp4", fps=fps
         ) as w:
             for frame in frames:
                 w.append_data(frame)
@@ -88,7 +88,7 @@ class BasicES(EvolutionStrategy):
         wandb.log(
             {
                 "rollout_video": wandb.Video(
-                    f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4",
+                    f"{self.results_dir}/{self.es_name}_seed{self.seed}.mp4",
                     fps=30,
                     format="mp4",
                 )
@@ -120,15 +120,6 @@ class BasicES(EvolutionStrategy):
         xdata, ydata = [], []
         times = [datetime.now()]
 
-        def hms(td):
-            """
-            Given a datetime.timedelta, return a tuple (hours, minutes, seconds).
-            """
-            total_secs = int(td.total_seconds())
-            hours, rem = divmod(total_secs, 3600)
-            minutes, seconds = divmod(rem, 60)
-            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
         def progress(num_steps, metrics):
             times.append(datetime.now())
             xdata.append(num_steps)
@@ -145,7 +136,7 @@ class BasicES(EvolutionStrategy):
                     "Step Time": (times[-1] - times[-2]).seconds,
                 }
             )
-            plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")
+            plt.savefig(f"{self.results_dir}/{self.es_name}_seed{self.seed}.png")
 
         max_y = {
             "ant": 8000,
@@ -190,7 +181,7 @@ class BasicES(EvolutionStrategy):
         wandb.log(
             {
                 "training_rewards": wandb.Image(
-                    f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png"
+                    f"{self.results_dir}/{self.es_name}_seed{self.seed}.png"
                 )
             }
         )
