@@ -1,4 +1,4 @@
-env_id: "hopper"
+env_id: "walker2d"
 seed: 42
 num_envs: 16
 
@@ -8,6 +8,9 @@ total_timesteps_es: 1000
 # TD3 fine-tuning settings
 total_timesteps_td3: 1000000
 
+results:
+  folder_es: "results/es"
+  folder_td3: "results/td3"
 video:
   folder_es:    "videos/es"
   folder_td3:   "videos/td3"

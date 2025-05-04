@@ -1,8 +1,8 @@
 es_name: "basic_es"
 sigma: 0.01
-population_size: 64
+population_size: 4096
 elite_frac: 0.5
-learning_rate: 0.02
-num_timesteps: 10000
-hidden_sizes: [400, 300]
-verbose: true   
+learning_rate: 0.01
+num_timesteps: 1_000_000_000
+hidden_sizes: [256, 256]
+verbose: true 

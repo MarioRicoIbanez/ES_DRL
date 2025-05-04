@@ -40,7 +40,8 @@ class BasicES(EvolutionStrategy):
         self.sigma           = es_cfg["sigma"]
         self.population_size = es_cfg["population_size"]
         self.lr              = es_cfg["learning_rate"]
-        self.num_timesteps = es_cfg["num_timesteps"]
+        self.num_timesteps   = es_cfg["num_timesteps"]
+        self.episode_length  = es_cfg.get("episode_length", 1000)
 
         # Setup logger and video recording
         self.logger = Logger(self.log_dir)
@@ -48,6 +49,9 @@ class BasicES(EvolutionStrategy):
         self.video_freq   = common_cfg["video"]["freq_es"]
         self.video_length = common_cfg["video"]["length"]
         os.makedirs(self.video_folder, exist_ok=True)
+        
+        self.results_dir = f'{common_cfg["results"]["folder_es"]}/{self.env_id}'
+        os.makedirs(self.results_dir, exist_ok=True)
 
         # Verbose flag
         self.verbose = es_cfg.get("verbose", False)
@@ -63,7 +67,7 @@ class BasicES(EvolutionStrategy):
         rollout = []
         rng = jax.random.PRNGKey(seed=1)
         state = jit_env_reset(rng=rng)
-        for _ in range(1000):
+        for _ in range(self.episode_length):
             rollout.append(state.pipeline_state)
             act_rng, rng = jax.random.split(rng)
             act, _ = jit_inference_fn(state.obs, act_rng)
@@ -98,7 +102,7 @@ class BasicES(EvolutionStrategy):
             environment=envs.get_environment(self.env_id),
             wrap_env=True,
             num_timesteps=self.num_timesteps,
-            episode_length=1000,
+            episode_length=self.episode_length,
             action_repeat=1,
             l2coeff=0,
             population_size=self.population_size,
