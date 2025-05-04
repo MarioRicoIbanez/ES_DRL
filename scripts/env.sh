@@ -6,3 +6,5 @@ conda activate mujoco_environment
 
 pip install jax[cuda]
 pip install imageio[ffmpeg] mujoco mujoco_mjx matplotlib wandb brax joblib pre-commit
+
+# TODO: Add torch if necessary
