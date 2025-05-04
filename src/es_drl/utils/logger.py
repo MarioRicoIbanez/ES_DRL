@@ -1,6 +1,7 @@
 # src/es_drl/utils/logger.py
 import os
 
+
 class Logger:
     def __init__(self, log_dir: str, filename: str = "progress.csv"):
         os.makedirs(log_dir, exist_ok=True)

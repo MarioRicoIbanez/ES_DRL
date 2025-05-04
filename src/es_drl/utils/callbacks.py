@@ -1,11 +1,13 @@
 # src/es_drl/utils/callbacks.py
 from stable_baselines3.common.callbacks import BaseCallback
 
+
 class EpisodeLoggerCallback(BaseCallback):
     """
     Logs episode rewards to a CSV via the Logger utility.
     Expects infos dict from Monitor wrapper with 'episode' key.
     """
+
     def __init__(self, data_logger, verbose=0):
         super().__init__(verbose)
         self.data_logger = data_logger

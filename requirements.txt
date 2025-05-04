@@ -1,8 +1,9 @@
-mujoco            # (pip wheels include the 2.3 native libs)
-gymnasium[mujoco]
+# mujoco            # (pip wheels include the 2.3 native libs)
+# gymnasium[mujoco]
 stable-baselines3
 sb3-contrib
-jax[jaxlib]              # cpu or cuda wheel
+jax[cuda12_local]              # cpu or cuda wheel
+brax
 ray[default]
 tensorboard
 torch
@@ -10,3 +11,4 @@ PyYAML
 moviepy
 imageio
 joblib
+pre-commit

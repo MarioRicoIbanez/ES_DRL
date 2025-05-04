@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import os
+
 # Force MuJoCo to use EGL offscreen rendering (no GLX/GLFW)
-os.environ["MUJOCO_GL"]           = "egl"
-os.environ["PYOPENGL_PLATFORM"]   = "egl"
+os.environ["MUJOCO_GL"] = "egl"
+os.environ["PYOPENGL_PLATFORM"] = "egl"
 
 import sys
 import yaml
@@ -11,9 +12,11 @@ import yaml
 from src.es_drl.es.basic_es import BasicES
 from src.es_drl.es.tr_es import TrustRegionES
 
+
 def load_yaml(path):
     with open(path) as f:
         return yaml.safe_load(f)
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -21,7 +24,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     common_cfg = load_yaml(sys.argv[1])
-    es_cfg     = load_yaml(sys.argv[2])
+    es_cfg = load_yaml(sys.argv[2])
 
     if es_cfg["es_name"] == "basic_es":
         es = BasicES(common_cfg, es_cfg)

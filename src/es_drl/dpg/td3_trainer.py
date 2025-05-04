@@ -1,35 +1,41 @@
 # src/es_drl/dpg/td3_trainer.py
 import os
-import torch
+
+# import torch TODO: CHANGE TO JAX
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import TD3
-from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv, VecVideoRecorder
+from stable_baselines3.common.vec_env import (
+    SubprocVecEnv,
+    DummyVecEnv,
+    VecVideoRecorder,
+)
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.noise import NormalActionNoise
 
+
 class VideoRecorderCallback(BaseCallback):
     def __init__(self, record_freq, video_folder, video_length, env_id, verbose=0):
         super().__init__(verbose)
-        self.record_freq   = record_freq
-        self.video_folder  = video_folder
-        self.video_length  = video_length
-        self.env_id        = env_id
-        self.last_record   = 0
+        self.record_freq = record_freq
+        self.video_folder = video_folder
+        self.video_length = video_length
+        self.env_id = env_id
+        self.last_record = 0
 
     def _on_step(self) -> bool:
         if (self.num_timesteps - self.last_record) >= self.record_freq:
             self.last_record = self.num_timesteps
-            record_env = DummyVecEnv([
-                lambda: Monitor(gym.make(self.env_id, render_mode="rgb_array"))
-            ])
+            record_env = DummyVecEnv(
+                [lambda: Monitor(gym.make(self.env_id, render_mode="rgb_array"))]
+            )
             record_env = VecVideoRecorder(
                 record_env,
                 video_folder=self.video_folder,
                 record_video_trigger=lambda step: step == 0,
                 video_length=self.video_length,
-                name_prefix=f"td3-{self.env_id}-{self.num_timesteps}"
+                name_prefix=f"td3-{self.env_id}-{self.num_timesteps}",
             )
             obs = record_env.reset()
             ep_reward = 0.0
@@ -42,6 +48,7 @@ class VideoRecorderCallback(BaseCallback):
             record_env.close()
             print(f"[Video] step {self.num_timesteps:,}: reward = {ep_reward:.1f}")
         return True
+
 
 class TD3Trainer:
     def __init__(self, common_cfg: dict, td3_cfg: dict, pretrained_path: str = None):
@@ -64,7 +71,9 @@ class TD3Trainer:
                 env = gym.make(self.env_id)
                 env.reset(seed=self.seed + rank)
                 from stable_baselines3.common.monitor import Monitor
+
                 return Monitor(env, filename=None)  # logs per-episode info to infos
+
             return _init
 
         self.train_env = SubprocVecEnv([make_env(i) for i in range(self.num_envs)])
@@ -74,8 +83,7 @@ class TD3Trainer:
         n_actions = tmp_env.action_space.shape[-1]
         tmp_env.close()
         action_noise = NormalActionNoise(
-            mean=np.zeros(n_actions),
-            sigma=0.1 * np.ones(n_actions)
+            mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions)
         )
 
         # Coerce learning_rate to a numeric constant if needed
@@ -99,6 +107,7 @@ class TD3Trainer:
         # Prepare episode logger
         from src.es_drl.utils.callbacks import EpisodeLoggerCallback
         from src.es_drl.utils.logger import Logger
+
         self.data_logger = Logger(self.log_dir)
         self.ep_callback = EpisodeLoggerCallback(self.data_logger)
 
@@ -121,7 +130,7 @@ class TD3Trainer:
             loaded = 0
             for key, tensor in es_state.items():
                 if key.startswith("net."):
-                    subkey = key[len("net."):]  # e.g. "0.weight"
+                    subkey = key[len("net.") :]  # e.g. "0.weight"
                     actor_key = f"actor.mu.{subkey}"
                     if actor_key in policy_state:
                         policy_state[actor_key] = tensor
@@ -132,11 +141,13 @@ class TD3Trainer:
 
             # Copy actor.mu → actor_target.mu
             actor_mu_state = self.model.policy.actor.mu.state_dict()
-            self.model.policy.actor_target.mu.load_state_dict(actor_mu_state, strict=False)
+            self.model.policy.actor_target.mu.load_state_dict(
+                actor_mu_state, strict=False
+            )
 
-            print(f"[TD3] Loaded {loaded} actor weights from ES checkpoint: {pretrained_path}")
-
-
+            print(
+                f"[TD3] Loaded {loaded} actor weights from ES checkpoint: {pretrained_path}"
+            )
 
     def train(self):
         # Setup callbacks: video & episode logger
@@ -144,18 +155,15 @@ class TD3Trainer:
             record_freq=self.video_freq,
             video_folder=self.video_folder,
             video_length=self.video_length,
-            env_id=self.env_id
+            env_id=self.env_id,
         )
 
         from stable_baselines3.common.callbacks import CallbackList
+
         callbacks = CallbackList([video_cb, self.ep_callback])
 
         # Start learning with both callbacks
-        self.model.learn(
-            total_timesteps=self.total_timesteps,
-            callback=callbacks
-        )
-
+        self.model.learn(total_timesteps=self.total_timesteps, callback=callbacks)
 
         # Save the final model
         save_dir = os.path.join("models", "td3")

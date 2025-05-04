@@ -30,26 +30,27 @@ from src.es_drl.es import brax_training_utils
 from src.es_drl.es.base import EvolutionStrategy
 from src.es_drl.utils.logger import Logger
 
+
 class BasicES(EvolutionStrategy):
     def __init__(self, common_cfg, es_cfg):
         super().__init__(common_cfg, es_cfg)
 
-        self.hidden_sizes   = es_cfg.get("hidden_sizes", [400, 300])
+        self.hidden_sizes = es_cfg.get("hidden_sizes", [400, 300])
 
         # ES hyperparameters
-        self.sigma           = es_cfg["sigma"]
+        self.sigma = es_cfg["sigma"]
         self.population_size = es_cfg["population_size"]
-        self.lr              = es_cfg["learning_rate"]
-        self.num_timesteps   = es_cfg["num_timesteps"]
-        self.episode_length  = es_cfg.get("episode_length", 1000)
+        self.lr = es_cfg["learning_rate"]
+        self.num_timesteps = es_cfg["num_timesteps"]
+        self.episode_length = es_cfg.get("episode_length", 1000)
 
         # Setup logger and video recording
         self.logger = Logger(self.log_dir)
         self.video_folder = common_cfg["video"]["folder_es"]
-        self.video_freq   = common_cfg["video"]["freq_es"]
+        self.video_freq = common_cfg["video"]["freq_es"]
         self.video_length = common_cfg["video"]["length"]
         os.makedirs(self.video_folder, exist_ok=True)
-        
+
         self.results_dir = f'{common_cfg["results"]["folder_es"]}/{self.env_id}'
         os.makedirs(self.results_dir, exist_ok=True)
 
@@ -73,9 +74,13 @@ class BasicES(EvolutionStrategy):
             act, _ = jit_inference_fn(state.obs, act_rng)
             state = jit_env_step(state, act)
 
-        frames = image.render_array(env.sys, jax.device_get(rollout), height=480, width=640)
+        frames = image.render_array(
+            env.sys, jax.device_get(rollout), height=480, width=640
+        )
         fps = int(1.0 / env.dt)
-        with imageio.get_writer(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4", fps=fps) as w:
+        with imageio.get_writer(
+            f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.mp4", fps=fps
+        ) as w:
             for frame in frames:
                 w.append_data(frame)
 
@@ -86,17 +91,26 @@ class BasicES(EvolutionStrategy):
         def progress(num_steps, metrics):
             times.append(datetime.now())
             xdata.append(num_steps)
-            ydata.append(metrics['eval/episode_reward'])
+            ydata.append(metrics["eval/episode_reward"])
             plt.xlim([0, self.num_timesteps])
             plt.ylim([min_y, max_y])
-            plt.xlabel('# environment steps')
-            plt.ylabel('reward per episode')
+            plt.xlabel("# environment steps")
+            plt.ylabel("reward per episode")
             plt.plot(xdata, ydata)
             print(f"Reward: {metrics['eval/episode_reward']}")
             plt.savefig(f"results/es/{self.env_id}/{self.es_name}_seed{self.seed}.png")
 
-        max_y = {'ant': 8000, 'halfcheetah': 8000, 'hopper': 2500, 'humanoid': 13000, 'humanoidstandup': 75_000, 'reacher': 5, 'walker2d': 5000, 'pusher': 0}[self.env_id]
-        min_y = {'reacher': -100, 'pusher': -150}.get(self.env_id, 0)
+        max_y = {
+            "ant": 8000,
+            "halfcheetah": 8000,
+            "hopper": 2500,
+            "humanoid": 13000,
+            "humanoidstandup": 75_000,
+            "reacher": 5,
+            "walker2d": 5000,
+            "pusher": 0,
+        }[self.env_id]
+        min_y = {"reacher": -100, "pusher": -150}.get(self.env_id, 0)
 
         make_inference_fn, self.params, _ = brax_training_utils.train(
             environment=envs.get_environment(self.env_id),
@@ -118,9 +132,14 @@ class BasicES(EvolutionStrategy):
             progress_fn=progress,
         )
 
-        print(f'time to jit: {times[1] - times[0]}')
-        print(f'time to train: {times[-1] - times[1]}')
+        print(f"time to jit: {times[1] - times[0]}")
+        print(f"time to train: {times[-1] - times[1]}")
         self.inference_fn = make_inference_fn(self.params)
 
-        model.save_params(os.path.join(self.model_dir, f"{self.env_id}/{self.es_name}_seed{self.seed}.pt"), self.params)
+        model.save_params(
+            os.path.join(
+                self.model_dir, f"{self.env_id}/{self.es_name}_seed{self.seed}.pt"
+            ),
+            self.params,
+        )
         self._save_video()
