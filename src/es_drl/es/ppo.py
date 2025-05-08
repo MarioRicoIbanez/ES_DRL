@@ -12,7 +12,7 @@ from src.es_drl.es import ppo_training_utils
 from src.es_drl.es.base import EvolutionStrategy
 
 
-class BasicES(EvolutionStrategy):
+class PPO(EvolutionStrategy):
     def __init__(self, common_cfg, es_cfg):
         super().__init__(common_cfg, es_cfg)
 
