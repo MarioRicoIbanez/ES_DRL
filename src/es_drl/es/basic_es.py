@@ -138,7 +138,7 @@ class BasicES(EvolutionStrategy):
             metrics_to_log = {
                 "Reward": metrics["eval/episode_reward"],
                 "Step Time": (times[-1] - times[-2]).seconds,
-                "Cumulative Time": (time[-1] - times[0]).seconds,
+                "Cumulative Time": (times[-1] - times[0]).seconds,
             }
             curr_reward = metrics_to_log["Reward"] 
             if not reward_100 and curr_reward >= max_y:
