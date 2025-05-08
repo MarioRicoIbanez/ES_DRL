@@ -8,10 +8,8 @@ import imageio
 from brax import envs
 from brax.io import model, image
 
-from 
-from src.es_drl.es import brax_training_utils
+from src.es_drl.es import ppo_training_utils
 from src.es_drl.es.base import EvolutionStrategy
-from src.es_drl.utils.logger import Logger
 
 
 class BasicES(EvolutionStrategy):
@@ -21,7 +19,8 @@ class BasicES(EvolutionStrategy):
         self.hidden_sizes = es_cfg.get("hidden_sizes", [400, 300])
 
         # PPO hyperparameters
-        self.population_size = es_cfg["num_envs"]
+        self.num_envs = es_cfg["num_envs"]
+        self.batch_size = es_cfg["batch_size"]
         self.lr = es_cfg["learning_rate"]
         self.num_timesteps = es_cfg["num_timesteps"]
         self.episode_length = es_cfg.get("episode_length", 1000)
@@ -110,25 +109,24 @@ class BasicES(EvolutionStrategy):
         }[self.env_id]
         min_y = {"reacher": -100, "pusher": -150}.get(self.env_id, 0)
 
-        make_inference_fn, self.params, _ = brax_training_utils.train(
+        make_inference_fn, self.params, _ = ppo_training_utils.train(
             environment=envs.get_environment(self.env_id),
-            wrap_env=True,
             num_timesteps=self.num_timesteps,
-            episode_length=self.episode_length,
-            action_repeat=1,
-            l2coeff=0,
-            population_size=self.population_size,
-            learning_rate=self.lr,
-            fitness_shaping=brax_training_utils.FitnessShaping.WIERSTRA,
-            num_eval_envs=128,
-            perturbation_std=self.sigma,
-            seed=self.seed,
-            normalize_observations=True,
             num_evals=1000,
-            center_fitness=True,
-            deterministic_eval=False,
+            reward_scaling=0.1,
+            episode_length=1000,
+            normalize_observations=True,
+            action_repeat=1,
+            unroll_length=10,
+            num_minibatches=32,
+            num_updates_per_batch=8,
+            discounting=0.97,
+            learning_rate=self.lr,
+            entropy_cost=1e-3,
+            num_envs=self.num_envs,
+            batch_size=self.batch_size,
+            seed=self.seed,
             progress_fn=progress,
-            hidden_layer_sizes=tuple(self.hidden_sizes),
         )
 
         print(f"time to jit: {(times[1] - times[0]).seconds}")

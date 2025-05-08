@@ -10,6 +10,7 @@ import sys
 import yaml
 
 from src.es_drl.es.basic_es import BasicES
+from src.es_drl.es.ppo import PPO
 from src.es_drl.es.tr_es import TrustRegionES
 
 
@@ -28,6 +29,8 @@ if __name__ == "__main__":
 
     if es_cfg["es_name"] == "basic_es":
         es = BasicES(common_cfg, es_cfg)
+    elif es_cfg["es_name"] == "ppo":
+        es = PPO(common_cfg, es_cfg)
     elif es_cfg["es_name"] == "tr_es":
         es = TrustRegionES(common_cfg, es_cfg)
     else:
