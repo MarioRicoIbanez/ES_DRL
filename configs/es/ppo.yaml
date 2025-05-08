@@ -1,0 +1,15 @@
+es_name: "ppo"
+num_envs: 8192
+batch_size: 1024
+learning_rate: 0.0003
+num_timesteps: 1_000_000_000
+hidden_sizes: [32,32,32,32]
+verbose: true
+
+
+reward_scaling=0.1,
+unroll_length=10,
+num_minibatches=32,
+num_updates_per_batch=8,
+discounting=0.97,
+entropy_cost=1e-3,
