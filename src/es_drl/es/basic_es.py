@@ -123,6 +123,8 @@ class BasicES(EvolutionStrategy):
         xdata, ydata = [], []
         times = [datetime.now()]
 
+        reward_25, reward_50, reward_75, reward_100 = False, False, False, False
+
         def progress(num_steps, metrics):
             times.append(datetime.now())
             xdata.append(num_steps)
@@ -133,12 +135,26 @@ class BasicES(EvolutionStrategy):
             plt.ylabel("reward per episode")
             plt.plot(xdata, ydata)
             print(f"Reward: {metrics['eval/episode_reward']}")
-            run.log(
-                {
-                    "Reward": metrics["eval/episode_reward"],
-                    "Step Time": (times[-1] - times[-2]).seconds,
-                }
-            )
+            metrics_to_log = {
+                "Reward": metrics["eval/episode_reward"],
+                "Step Time": (times[-1] - times[-2]).seconds,
+                "Cumulative Time": (time[-1] - times[0]).seconds,
+            }
+            curr_reward = metrics_to_log["Reward"] 
+            if not reward_100 and curr_reward >= max_y:
+                metrics_to_log["Time to Max Reward"] = metrics_to_log["Cumulative Time"]
+                reward_100 = True
+            elif not reward_75 and curr_reward >= (0.75 * max_y):
+                metrics_to_log["Time to 75% Reward"] = metrics_to_log["Cumulative Time"]
+                reward_75 = True
+            elif not reward_50 and curr_reward >= (0.5 * max_y):
+                metrics_to_log["Time to 50% Reward"] = metrics_to_log["Cumulative Time"]
+                reward_50 = True
+            elif not reward_25 and curr_reward >= (0.25 * max_y):
+                metrics_to_log["Time to 25% Reward"] = metrics_to_log["Cumulative Time"]
+                reward_25 = True
+
+            run.log(metrics_to_log)
             plt.savefig(f"{self.results_dir}/{self.es_name}_seed{self.seed}.png")
 
         max_y = {
@@ -167,7 +183,7 @@ class BasicES(EvolutionStrategy):
             perturbation_std=self.sigma,
             seed=self.seed,
             normalize_observations=True,
-            num_evals=20,
+            num_evals=1000,
             center_fitness=True,
             deterministic_eval=False,
             progress_fn=progress,
@@ -206,5 +222,5 @@ class BasicES(EvolutionStrategy):
         )
         wandb.log_artifact(artifact)
 
-        self._save_video()
+        # self._save_video()
         run.finish()

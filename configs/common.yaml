@@ -1,4 +1,4 @@
-env_id: "hopper"
+env_id: "humanoid"
 seed: 42
 num_envs: 16
 
