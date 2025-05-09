@@ -13,8 +13,8 @@ from src.es_drl.es.base import EvolutionStrategy
 
 
 class PPO(EvolutionStrategy):
-    def __init__(self, common_cfg, es_cfg):
-        super().__init__(common_cfg, es_cfg)
+    def __init__(self,  es_cfg: dict, seed: int, env_id: str):
+        super().__init__(es_cfg, seed, env_id)
 
         self.hidden_sizes = es_cfg.get("hidden_sizes", [400, 300])
 

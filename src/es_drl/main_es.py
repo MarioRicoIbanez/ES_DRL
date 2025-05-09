@@ -45,9 +45,10 @@ if __name__ == "__main__":
     )
 
     # common_cfg = load_yaml(sys.argv[1])
-    es_cfg = load_yaml(parser.config)
-    seed = parser.seed
-    env_id = parser.env_id
+    args = parser.parse_args()
+    es_cfg = load_yaml(args.config)
+    seed = args.seed
+    env_id = args.env_id
 
     if es_cfg["es_name"] == "basic_es":
         es = BasicES(es_cfg, seed=seed, env_id=env_id)
