@@ -90,6 +90,7 @@ class PPO(EvolutionStrategy):
 
             run.log(metrics_to_log)
             plt.savefig(f"{self.results_dir}/{self.es_name}_seed{self.seed}.png")
+            return reward_100
 
         reached_rewards = {
             "reward_25": False,
@@ -112,7 +113,7 @@ class PPO(EvolutionStrategy):
         make_inference_fn, self.params, _ = ppo_training_utils.train(
             environment=envs.get_environment(self.env_id),
             num_timesteps=self.num_timesteps,
-            num_evals=1000,
+            num_evals=100,
             reward_scaling=0.1,
             episode_length=1000,
             normalize_observations=True,

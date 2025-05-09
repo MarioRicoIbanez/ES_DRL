@@ -154,6 +154,7 @@ class BasicES(EvolutionStrategy):
 
             run.log(metrics_to_log)
             plt.savefig(f"{self.results_dir}/{self.es_name}_seed{self.seed}.png")
+            return reward_100
 
         reached_rewards = {
             "reward_25": False,
@@ -187,7 +188,7 @@ class BasicES(EvolutionStrategy):
             perturbation_std=self.sigma,
             seed=self.seed,
             normalize_observations=True,
-            num_evals=1000,
+            num_evals=100,
             center_fitness=True,
             deterministic_eval=False,
             progress_fn=progress,

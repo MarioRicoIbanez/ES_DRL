@@ -670,7 +670,7 @@ def train(
         training_metrics={},
     )
     logging.info(metrics)
-    progress_fn(0, metrics)
+    finished = progress_fn(0, metrics)
 
   training_metrics = {}
   training_walltime = 0
@@ -722,14 +722,18 @@ def train(
           training_metrics,
       )
       logging.info(metrics)
-      progress_fn(current_step, metrics)
+      finished = progress_fn(current_step, metrics)
+      if finished:
+        break
 
   total_steps = current_step
-  if not total_steps >= num_timesteps:
-    raise AssertionError(
-        f'Total steps {total_steps} is less than `num_timesteps`='
-        f' {num_timesteps}.'
-    )
+  if finished:
+    print(f"Early stopping - Max reward was reached at iteration: {total_steps}")
+  # if not total_steps >= num_timesteps:
+  #   raise AssertionError(
+  #       f'Total steps {total_steps} is less than `num_timesteps`='
+  #       f' {num_timesteps}.'
+  #   )
 
   # If there was no mistakes the training_state should still be identical on all
   # devices.
