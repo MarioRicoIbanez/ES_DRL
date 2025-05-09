@@ -405,6 +405,7 @@ def train(
         key=eval_key,
     )
 
+    finished = False
     if num_evals > 1:
         metrics = evaluator.run_evaluation(
             (training_state.normalizer_params, training_state.policy_params),
@@ -432,7 +433,7 @@ def train(
     
     total_steps = int(training_state.num_env_steps)
     if finished:
-        print(f"Early stopping - Max reward was reached at iteration: {total_steps}")
+        logging.info(f"Early stopping - Max reward was reached at iteration: {total_steps}")
 
     # if not total_steps >= num_timesteps:
     #     raise AssertionError(

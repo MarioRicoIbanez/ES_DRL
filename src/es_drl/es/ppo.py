@@ -28,7 +28,7 @@ class PPO(EvolutionStrategy):
         # Network parameters
         self.hidden_sizes = es_cfg.get("hidden_sizes", [32, 32])
 
-        self.results_dir = f'{common_cfg["results"]["folder_es"]}/{self.env_id}'
+        self.results_dir = f'results/ppo/{self.env_id}'
         os.makedirs(self.results_dir, exist_ok=True)
 
         # Verbose flag
@@ -90,7 +90,7 @@ class PPO(EvolutionStrategy):
 
             run.log(metrics_to_log)
             plt.savefig(f"{self.results_dir}/{self.es_name}_seed{self.seed}.png")
-            return reward_100
+            return reached_rewards["reward_100"]
 
         reached_rewards = {
             "reward_25": False,

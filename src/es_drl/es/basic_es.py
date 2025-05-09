@@ -48,14 +48,8 @@ class BasicES(EvolutionStrategy):
         # Network parameters
         self.hidden_sizes = es_cfg.get("hidden_sizes", [32, 32])
 
-        # Setup logger and video recording
-        self.logger = Logger(self.log_dir)
-        self.video_folder = common_cfg["video"]["folder_es"]
-        self.video_freq = common_cfg["video"]["freq_es"]
-        self.video_length = common_cfg["video"]["length"]
-        os.makedirs(self.video_folder, exist_ok=True)
 
-        self.results_dir = f'{common_cfg["results"]["folder_es"]}/{self.env_id}'
+        self.results_dir = f'results/es/{self.env_id}'
         os.makedirs(self.results_dir, exist_ok=True)
 
         # Verbose flag
@@ -154,7 +148,7 @@ class BasicES(EvolutionStrategy):
 
             run.log(metrics_to_log)
             plt.savefig(f"{self.results_dir}/{self.es_name}_seed{self.seed}.png")
-            return reward_100
+            return reached_rewards["reward_100"]
 
         reached_rewards = {
             "reward_25": False,

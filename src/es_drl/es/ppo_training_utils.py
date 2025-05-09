@@ -660,6 +660,7 @@ def train(
 
   # Run initial eval
   metrics = {}
+  finished = False
   if process_id == 0 and num_evals > 1:
     metrics = evaluator.run_evaluation(
         _unpmap((
@@ -728,7 +729,7 @@ def train(
 
   total_steps = current_step
   if finished:
-    print(f"Early stopping - Max reward was reached at iteration: {total_steps}")
+    logging.info(f"Early stopping - Max reward was reached at iteration: {total_steps}")
   # if not total_steps >= num_timesteps:
   #   raise AssertionError(
   #       f'Total steps {total_steps} is less than `num_timesteps`='
