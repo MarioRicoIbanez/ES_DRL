@@ -6,7 +6,7 @@ import os
 os.environ["MUJOCO_GL"] = "egl"
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 
-import sys
+import argparse
 import yaml
 
 from src.es_drl.es.basic_es import BasicES
@@ -20,19 +20,41 @@ def load_yaml(path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: main_es.py <common_config.yaml> <es_config.yaml>")
-        sys.exit(1)
 
-    common_cfg = load_yaml(sys.argv[1])
-    es_cfg = load_yaml(sys.argv[2])
+    parser = argparse.ArgumentParser(description="ES_DRL args")
+
+    parser.add_argument(
+        '--config',
+        type=str,
+        required=True,
+        help='Path to the config file'
+    )
+
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=42,
+        help='Random seed (default: 42)'
+    )
+
+    parser.add_argument(
+        '--env_id',
+        type=str,
+        default="hopper",
+        help='MuJoCo environment ID (all lowercase, e.g., halfcheetah)'
+    )
+
+    # common_cfg = load_yaml(sys.argv[1])
+    es_cfg = load_yaml(parser.config)
+    seed = parser.seed
+    env_id = parser.env_id
 
     if es_cfg["es_name"] == "basic_es":
-        es = BasicES(common_cfg, es_cfg)
+        es = BasicES(es_cfg, seed=seed, env_id=env_id)
     elif es_cfg["es_name"] == "ppo":
-        es = PPO(common_cfg, es_cfg)
+        es = PPO(es_cfg, seed=seed, env_id=env_id)
     elif es_cfg["es_name"] == "tr_es":
-        es = TrustRegionES(common_cfg, es_cfg)
+        es = TrustRegionES(es_cfg, seed=seed, env_id=env_id)
     else:
         raise NotImplementedError(f"ES '{es_cfg['es_name']}' not implemented yet")
 
