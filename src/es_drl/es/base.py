@@ -25,6 +25,8 @@ class EvolutionStrategy(ABC):
         os.makedirs(self.log_dir, exist_ok=True)
         # os.makedirs(self.video_dir, exist_ok=True)
 
+        self.run_name = f"{self.env_id.upper()}-{self.es_name}"
+
     @abstractmethod
     def run(self) -> str:
         """

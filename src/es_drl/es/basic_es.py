@@ -100,6 +100,7 @@ class BasicES(EvolutionStrategy):
             entity="ES_DRL",
             # Set the wandb project where this run will be logged.
             project="ES_DRL Experiments",
+            name=self.run_name,
             # Track hyperparameters and run metadata.
             config={
                 "strategy": "es",
