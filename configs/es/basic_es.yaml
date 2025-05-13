@@ -6,3 +6,4 @@ learning_rate: 0.01
 num_timesteps: 1_000_000_000
 hidden_sizes: [32,32,32,32]
 verbose: true
+ellite_frac: 0.2

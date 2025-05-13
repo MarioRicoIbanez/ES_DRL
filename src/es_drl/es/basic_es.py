@@ -44,6 +44,7 @@ class BasicES(EvolutionStrategy):
         self.lr = es_cfg["learning_rate"]
         self.num_timesteps = es_cfg["num_timesteps"]
         self.episode_length = es_cfg.get("episode_length", 1000)
+        self.ellite_fraction = es_cfg.get("ellite_fraction")
 
         # Network parameters
         self.hidden_sizes = es_cfg.get("hidden_sizes", [32, 32])
@@ -117,6 +118,7 @@ class BasicES(EvolutionStrategy):
                 "lr": self.lr,
                 "num_timesteps": self.num_timesteps,
                 "episode_length": self.episode_length,
+                "ellite_fraction": self.ellite_fraction,
             },
         )
 
@@ -192,6 +194,7 @@ class BasicES(EvolutionStrategy):
             deterministic_eval=False,
             progress_fn=progress,
             hidden_layer_sizes=tuple(self.hidden_sizes),
+            ellite_fraction=self.ellite_fraction,
         )
 
         print(f"time to jit: {(times[1] - times[0]).seconds}")

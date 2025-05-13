@@ -87,6 +87,7 @@ def train(
     fitness_shaping: FitnessShaping = FitnessShaping.ORIGINAL,
     num_eval_envs: int = 128,
     perturbation_std: float = 0.1,
+    ellite_fraction: float = None,
     seed: int = 0,
     normalize_observations: bool = False,
     num_evals: int = 1,
@@ -258,8 +259,12 @@ def train(
         """
         # NOTE: The trick "len(weights) -> len(weights) * perturbation_std" is
         # equivalent to tuning the l2_coef.
-        weights = jnp.reshape(weights, ([population_size] + [1] * (noise.ndim - 1)))
-        delta = jnp.sum(noise * weights, axis=0) / population_size
+        
+        pop_size = weights.shape[0]
+
+
+        weights = jnp.reshape(weights, ([pop_size] + [1] * (noise.ndim - 1)))
+        delta = jnp.sum(noise * weights, axis=0) / pop_size
         # l2coeff controls the weight decay of the parameters of our policy network.
         # This prevents the parameters from growing very large compared to the
         # perturbations.
@@ -306,11 +311,20 @@ def train(
 
         weights = fitness_shaping.value(weights)
 
-        if center_fitness:
-            weights = (weights - jnp.mean(weights)) / (1e-6 + jnp.std(weights))
+        if ellite_fraction is None: 
 
-        weights1, weights2 = jnp.split(weights, 2)
-        weights = weights1 - weights2
+            if center_fitness:
+                weights = (weights - jnp.mean(weights)) / (1e-6 + jnp.std(weights))
+
+            weights1, weights2 = jnp.split(weights, 2)
+            weights = weights1 - weights2
+        else:
+            order_mask = jnp.argsort(weights)
+            sorted_weights = weights[order_mask]
+            noise = noise[order_mask]
+
+            weights = weights[: int(jnp.ceil(population_size * ellite_fraction))]
+            noise = noise[: int(jnp.ceil(population_size * ellite_fraction))]            
 
         delta = jax.tree_util.tree_map(
             functools.partial(compute_delta, weights=weights),
