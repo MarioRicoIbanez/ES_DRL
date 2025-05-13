@@ -405,15 +405,16 @@ def train(
         key=eval_key,
     )
 
+    finished = False
     if num_evals > 1:
         metrics = evaluator.run_evaluation(
             (training_state.normalizer_params, training_state.policy_params),
             training_metrics={},
         )
         logging.info(metrics)
-        progress_fn(0, metrics)
+        finished = progress_fn(0, metrics)
 
-    while int(training_state.num_env_steps) < num_timesteps:
+    while not finished and int(training_state.num_env_steps) < num_timesteps:
         # optimization
         key, epoch_key = jax.random.split(key)
         training_state, training_metrics = training_epoch_with_timing(
@@ -427,15 +428,18 @@ def train(
                 training_metrics,
             )
             logging.info(metrics)
-            progress_fn(int(training_state.num_env_steps), metrics)
+            finished = progress_fn(int(training_state.num_env_steps), metrics)
             next_eval_step += num_env_steps_between_evals
-
+    
     total_steps = int(training_state.num_env_steps)
-    if not total_steps >= num_timesteps:
-        raise AssertionError(
-            f"Total steps {total_steps} is less than `num_timesteps`="
-            f" {num_timesteps}."
-        )
+    if finished:
+        logging.info(f"Early stopping - Max reward was reached at iteration: {total_steps}")
+
+    # if not total_steps >= num_timesteps:
+    #     raise AssertionError(
+    #         f"Total steps {total_steps} is less than `num_timesteps`="
+    #         f" {num_timesteps}."
+    #     )
 
     logging.info("total steps: %s", total_steps)
     params = training_state.normalizer_params, training_state.policy_params

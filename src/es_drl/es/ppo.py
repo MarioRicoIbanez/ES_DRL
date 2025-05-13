@@ -1,22 +1,3 @@
-# Copyright 2024 The Brax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""Evolution strategy training.
-
-See: https://arxiv.org/pdf/1703.03864.pdf
-"""
-
 from datetime import datetime
 import os
 
@@ -27,20 +8,19 @@ import imageio
 from brax import envs
 from brax.io import model, image
 
-from src.es_drl.es import brax_training_utils
+from src.es_drl.es import ppo_training_utils
 from src.es_drl.es.base import EvolutionStrategy
-from src.es_drl.utils.logger import Logger
 
 
-class BasicES(EvolutionStrategy):
+class PPO(EvolutionStrategy):
     def __init__(self,  es_cfg: dict, seed: int, env_id: str):
         super().__init__(es_cfg, seed, env_id)
 
         self.hidden_sizes = es_cfg.get("hidden_sizes", [400, 300])
 
-        # ES hyperparameters
-        self.sigma = es_cfg["sigma"]
-        self.population_size = es_cfg["population_size"]
+        # PPO hyperparameters
+        self.num_envs = es_cfg["num_envs"]
+        self.batch_size = es_cfg["batch_size"]
         self.lr = es_cfg["learning_rate"]
         self.num_timesteps = es_cfg["num_timesteps"]
         self.episode_length = es_cfg.get("episode_length", 1000)
@@ -48,49 +28,11 @@ class BasicES(EvolutionStrategy):
         # Network parameters
         self.hidden_sizes = es_cfg.get("hidden_sizes", [32, 32])
 
-
-        self.results_dir = f'results/es/{self.env_id}'
+        self.results_dir = f'results/ppo/{self.env_id}'
         os.makedirs(self.results_dir, exist_ok=True)
 
         # Verbose flag
         self.verbose = es_cfg.get("verbose", False)
-
-    def _save_video(self):
-        # create an env with auto-reset
-        env = envs.create(env_name=self.env_id)
-
-        jit_env_reset = jax.jit(env.reset)
-        jit_env_step = jax.jit(env.step)
-        jit_inference_fn = jax.jit(self.inference_fn)
-
-        rollout = []
-        rng = jax.random.PRNGKey(seed=1)
-        state = jit_env_reset(rng=rng)
-        for _ in range(self.episode_length):
-            rollout.append(state.pipeline_state)
-            act_rng, rng = jax.random.split(rng)
-            act, _ = jit_inference_fn(state.obs, act_rng)
-            state = jit_env_step(state, act)
-
-        frames = image.render_array(
-            env.sys, jax.device_get(rollout), height=480, width=640
-        )
-        fps = int(1.0 / env.dt)
-        with imageio.get_writer(
-            f"{self.results_dir}/{self.es_name}_seed{self.seed}.mp4", fps=fps
-        ) as w:
-            for frame in frames:
-                w.append_data(frame)
-
-        wandb.log(
-            {
-                "rollout_video": wandb.Video(
-                    f"{self.results_dir}/{self.es_name}_seed{self.seed}.mp4",
-                    fps=30,
-                    format="mp4",
-                )
-            }
-        )
 
     def run(self) -> str:
 
@@ -103,12 +45,12 @@ class BasicES(EvolutionStrategy):
             name=self.run_name,
             # Track hyperparameters and run metadata.
             config={
-                "strategy": "es",
+                "strategy": "ppo",
                 "seed": self.seed,
                 "environment": self.env_id,
-                "hidden_sizes": self.hidden_sizes,
-                "sigma": self.sigma,
-                "population_size": self.population_size,
+                "hidden_sizes": self.hidden_sizes,  
+                "num_envs": self.num_envs,
+                "batch_size": self.batch_size,
                 "lr": self.lr,
                 "num_timesteps": self.num_timesteps,
                 "episode_length": self.episode_length,
@@ -169,25 +111,24 @@ class BasicES(EvolutionStrategy):
         }[self.env_id]
         min_y = {"reacher": -100, "pusher": -150}.get(self.env_id, 0)
 
-        make_inference_fn, self.params, _ = brax_training_utils.train(
+        make_inference_fn, self.params, _ = ppo_training_utils.train(
             environment=envs.get_environment(self.env_id),
-            wrap_env=True,
             num_timesteps=self.num_timesteps,
-            episode_length=self.episode_length,
-            action_repeat=1,
-            l2coeff=0,
-            population_size=self.population_size,
-            learning_rate=self.lr,
-            fitness_shaping=brax_training_utils.FitnessShaping.WIERSTRA,
-            num_eval_envs=128,
-            perturbation_std=self.sigma,
-            seed=self.seed,
-            normalize_observations=True,
             num_evals=100,
-            center_fitness=True,
-            deterministic_eval=False,
+            reward_scaling=0.1,
+            episode_length=1000,
+            normalize_observations=True,
+            action_repeat=1,
+            unroll_length=10,
+            num_minibatches=32,
+            num_updates_per_batch=8,
+            discounting=0.97,
+            learning_rate=self.lr,
+            entropy_cost=1e-3,
+            num_envs=self.num_envs,
+            batch_size=self.batch_size,
+            seed=self.seed,
             progress_fn=progress,
-            hidden_layer_sizes=tuple(self.hidden_sizes),
         )
 
         print(f"time to jit: {(times[1] - times[0]).seconds}")
