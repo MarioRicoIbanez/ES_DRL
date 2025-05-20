@@ -392,6 +392,7 @@ def train(
   ppo_network = network_factory(
       obs_shape, env.action_size, preprocess_observations_fn=normalize
   )
+
   make_policy = ppo_networks.make_inference_fn(ppo_network)
 
   optimizer = optax.adam(learning_rate=learning_rate)
@@ -615,7 +616,9 @@ def train(
 
   if restore_params is not None:
     logging.info('Restoring TrainingState from `restore_params`.')
-    value_params = restore_params[2] if restore_value_fn else init_params.value
+    value_params = init_params.value
+    if restore_value_fn:
+      value_params = restore_params[2]
     training_state = training_state.replace(
         normalizer_params=restore_params[0],
         params=training_state.params.replace(

@@ -11,6 +11,7 @@ import yaml
 
 from src.es_drl.es.basic_es import BasicES
 from src.es_drl.es.ppo import PPO
+from src.es_drl.es.pretraining import Pretraining
 from src.es_drl.es.tr_es import TrustRegionES
 
 
@@ -54,6 +55,8 @@ if __name__ == "__main__":
         es = BasicES(es_cfg, seed=seed, env_id=env_id)
     elif es_cfg["es_name"] == "ppo":
         es = PPO(es_cfg, seed=seed, env_id=env_id)
+    elif es_cfg["es_name"] == "pretraining":
+        es = Pretraining(es_cfg, seed=seed, env_id=env_id)
     elif es_cfg["es_name"] == "tr_es":
         es = TrustRegionES(es_cfg, seed=seed, env_id=env_id)
     else:
