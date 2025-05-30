@@ -1,4 +1,10 @@
 # src/es_drl/es/base.py
+"""
+Base class for Evolution Strategies (ES) implementations.
+This abstract class defines the common interface and functionality for all ES variants,
+including directory management, configuration handling, and the abstract training loop.
+"""
+
 import os
 from abc import ABC, abstractmethod
 

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Evolution strategy training.
-
-See: https://arxiv.org/pdf/1703.03864.pdf
+"""
+Combined ES and PPO pretraining implementation.
+This class implements a two-phase training approach where ES is used for initial
+exploration and policy optimization, followed by PPO fine-tuning. It includes
+parameter transfer between phases and support for wandb logging.
 """
 
 from datetime import datetime

@@ -1,4 +1,10 @@
 # src/es_drl/utils/logger.py
+"""
+Logger utility for tracking training progress.
+This class provides functionality for logging training metrics to CSV files,
+with support for appending to existing logs and automatic header management.
+"""
+
 import os
 
 

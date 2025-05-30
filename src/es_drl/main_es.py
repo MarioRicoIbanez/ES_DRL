@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+"""
+Main script for training agents using Evolution Strategies (ES) and PPO.
+This script handles command-line arguments, configuration loading, and initializes
+the appropriate training algorithm (Basic ES, PPO, or Pretraining) based on the
+provided configuration.
+"""
+
 import os
 
 # Force MuJoCo to use EGL offscreen rendering (no GLX/GLFW)

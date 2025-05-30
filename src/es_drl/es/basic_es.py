@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Evolution strategy training.
+"""
+Basic Evolution Strategy (ES) implementation.
+This class implements the core ES algorithm with population-based optimization,
+parameter perturbation, and fitness-based updates. It includes support for
+wandb logging, video recording, and checkpointing.
 
 See: https://arxiv.org/pdf/1703.03864.pdf
 """

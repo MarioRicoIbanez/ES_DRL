@@ -1,3 +1,10 @@
+"""
+Proximal Policy Optimization (PPO) implementation.
+This class implements the PPO algorithm with clipped objective, GAE,
+and parallel environment execution. It includes support for wandb logging,
+video recording, and checkpointing.
+"""
+
 from datetime import datetime
 import os
 

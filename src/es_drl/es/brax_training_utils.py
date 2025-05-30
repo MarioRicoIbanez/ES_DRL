@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Evolution strategy training.
+"""
+Training utilities for Brax environments.
+This module provides helper functions and classes for training in Brax environments,
+including fitness shaping methods, environment wrapping, and training state management.
 
 See: https://arxiv.org/pdf/1703.03864.pdf
 """

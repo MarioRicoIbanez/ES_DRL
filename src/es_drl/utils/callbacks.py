@@ -1,4 +1,10 @@
 # src/es_drl/utils/callbacks.py
+"""
+Training callbacks for monitoring and logging.
+This module provides callback classes for tracking episode rewards and other
+metrics during training, with integration to the Logger utility.
+"""
+
 from stable_baselines3.common.callbacks import BaseCallback
 
 

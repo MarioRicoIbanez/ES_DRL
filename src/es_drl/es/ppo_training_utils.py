@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Proximal policy optimization training.
+"""
+Training utilities for PPO implementation.
+This module provides helper functions for PPO training, including environment
+wrapping, observation processing, and parallel execution utilities.
 
 See: https://arxiv.org/pdf/1707.06347.pdf
 """
