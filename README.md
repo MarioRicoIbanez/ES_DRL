@@ -15,6 +15,7 @@ This project implements a combination of Evolution Strategies (ES) and Deep Rein
 
 ## Project Structure
 
+
 ```
 src/es_drl/
 ├── es/
